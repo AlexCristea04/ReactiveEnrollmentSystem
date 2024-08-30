@@ -1,9 +1,14 @@
 package com.champlain.enrollmentsservice.domainclientlayer.Courses;
 
+import com.champlain.enrollmentsservice.utils.HttpErrorInfo;
+import com.champlain.enrollmentsservice.utils.exceptions.InvalidInputException;
+import com.champlain.enrollmentsservice.utils.exceptions.NotFoundException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import org.springframework.http.HttpStatusCode;
 
 @Service
 public class CourseClient {
@@ -18,6 +23,30 @@ public class CourseClient {
         this.webClient = WebClient.builder()
                 .baseUrl(courseClientServiceBaseURL)
                 .build();
+    }
+
+    public Mono<CourseResponseModel> getCourseByCourseId(final String courseId) {
+        return webClient.get()
+                .uri("/{courseId}", courseId)
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, httpErrorInfo ->
+                        httpErrorInfo.bodyToMono(HttpErrorInfo.class)
+                                .flatMap(error -> {
+                                    switch (httpErrorInfo.statusCode().value())
+                                    {
+                                        case 404:
+                                            return Mono.error(new
+                                                    NotFoundException(error.getMessage()));
+                                        case 422:
+                                            return Mono.error(new
+                                                    InvalidInputException(error.getMessage()));
+                                        default:
+                                            return Mono.error(new
+                                                    IllegalArgumentException(error.getMessage()));
+                                    }
+                                })
+                )
+                .bodyToMono(CourseResponseModel.class);
     }
 
 }

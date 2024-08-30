@@ -23,7 +23,8 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     public Mono<EnrollmentResponseModel> addEnrollment(Mono<EnrollmentRequestModel> enrollmentRequestModel) {
         return enrollmentRequestModel
                 .map(RequestContext::new)
-                .flatMap(this::studentRequestResponse);
+                .flatMap(this::studentRequestResponse)
+                .flatMap(this::courseRequestResponse);
     }
 
     private Mono<RequestContext> studentRequestResponse(RequestContext rc) {
@@ -34,8 +35,9 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     }
 
     private Mono<RequestContext> courseRequestResponse(RequestContext rc) {
-        return this.courseClient
-                .getCourseByCourseId
+        return this.courseClient.getCourseByCourseId(rc.getEnrollmentRequestModel().getCourseId())
+                        .doOnNext(rc::setCourseResponseModel)
+                        .thenReturn(rc);
     }
 }
 
